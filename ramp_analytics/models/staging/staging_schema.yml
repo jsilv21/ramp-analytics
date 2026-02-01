@@ -1,0 +1,174 @@
+version: 2
+
+models:
+  - name: stg_orgs
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+          - unique
+
+  - name: stg_okta_users
+    columns:
+      - name: user_id
+        tests:
+          - not_null
+          - unique
+      - name: org_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orgs')
+              field: org_id
+      - name: status
+        tests:
+          - accepted_values:
+              values: ["active", "suspended", "deprovisioned"]
+
+  - name: stg_okta_groups
+    columns:
+      - name: group_id
+        tests:
+          - not_null
+          - unique
+      - name: org_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orgs')
+              field: org_id
+
+  - name: stg_okta_apps
+    columns:
+      - name: app_id
+        tests:
+          - not_null
+          - unique
+      - name: org_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orgs')
+              field: org_id
+
+  - name: stg_okta_assignments
+    columns:
+      - name: assignment_id
+        tests:
+          - not_null
+          - unique
+      - name: org_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orgs')
+              field: org_id
+      - name: user_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_okta_users')
+              field: user_id
+      - name: app_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_okta_apps')
+              field: app_id
+
+  - name: stg_okta_logins
+    columns:
+      - name: login_id
+        tests:
+          - not_null
+          - unique
+      - name: org_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orgs')
+              field: org_id
+      - name: user_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_okta_users')
+              field: user_id
+      - name: app_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_okta_apps')
+              field: app_id
+
+  - name: stg_saas_usage
+    columns:
+      - name: usage_id
+        tests:
+          - not_null
+          - unique
+      - name: activity_at
+        tests:
+          - not_null
+      - name: org_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orgs')
+              field: org_id
+      - name: user_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_okta_users')
+              field: user_id
+      - name: app_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_okta_apps')
+              field: app_id
+
+  - name: stg_saas_contracts
+    columns:
+      - name: contract_id
+        tests:
+          - not_null
+          - unique
+      - name: org_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orgs')
+              field: org_id
+      - name: app_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_okta_apps')
+              field: app_id
+
+  - name: stg_saas_invoices
+    columns:
+      - name: invoice_id
+        tests:
+          - not_null
+          - unique
+      - name: org_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orgs')
+              field: org_id
+      - name: contract_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_saas_contracts')
+              field: contract_id
+      - name: app_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_okta_apps')
+              field: app_id
