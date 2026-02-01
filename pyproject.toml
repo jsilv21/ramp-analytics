@@ -1,0 +1,14 @@
+[project]
+name = "ramp-analytics"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "dbt-core==1.11.2",
+  "dbt-duckdb==1.10.0",
+  "duckdb==1.4.4",
+  "pandas==3.0.0",
+  "numpy==2.4.2",
+  "Faker==40.1.2",
+]
