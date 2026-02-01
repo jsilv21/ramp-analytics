@@ -1,0 +1,7 @@
+# Pinned for reproducible local demo (Python 3.13)
+dbt-core==1.11.2
+dbt-duckdb==1.10.0
+duckdb==1.4.4
+pandas==3.0.0
+numpy==2.4.2
+Faker==40.1.2
