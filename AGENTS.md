@@ -3,6 +3,7 @@
 ## Guiding Principles (LLM Context)
 - Build a demo-able Seat Intelligence product: Okta usage + SaaS spend -> actionable recommendations.
 - Optimize for local, zero-infra setup so a Ramp teammate can run it easily.
+- Assume bash shell commands for docs and instructions.
 - Technical decisions are locked:
   - DuckDB as the warehouse.
   - dbt Core only (avoid dbt Fusion with DuckDB).

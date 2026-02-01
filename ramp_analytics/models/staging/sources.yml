@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: raw_orgs
+      - name: raw_okta_users
+      - name: raw_okta_groups
+      - name: raw_okta_apps
+      - name: raw_okta_assignments
+      - name: raw_okta_logins
+      - name: raw_saas_usage
+      - name: raw_saas_contracts
+      - name: raw_saas_invoices
