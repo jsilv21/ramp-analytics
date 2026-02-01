@@ -286,7 +286,7 @@ def generate_data(
     faker = Faker()
     faker.seed_instance(seed)
 
-    today = dt.datetime.utcnow().replace(microsecond=0)
+    today = dt.datetime.now(dt.UTC).replace(tzinfo=None, microsecond=0)
 
     org_rows: list[dict] = []
     user_rows: list[dict] = []
@@ -410,6 +410,8 @@ def generate_data(
                 "vendor": app["vendor"],
                 "enabled_at": enabled_at.isoformat(),
                 "base_price": app["base_price"],
+                "target_departments": app["target_departments"],
+                "core": app["core"],
                 "core_app": app["core"],
             }
             app_rows.append(app_record)
