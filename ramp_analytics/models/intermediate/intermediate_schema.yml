@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_app_assignments
-    description: "User to app assignments rolled up to one row per user and app."
+    description: "User to app assignments rolled up to one row per org/app/user (no historical assignment timeline)."
     columns:
       - name: org_id
         tests:
@@ -15,7 +15,7 @@ models:
           - not_null
 
   - name: int_user_app_activity
-    description: "Latest login and usage activity per user and app."
+    description: "Latest login/usage activity per org/app/user. Activity is app-specific and classed active/inactive via `active_user_days`."
     columns:
       - name: org_id
         tests:
@@ -32,7 +32,7 @@ models:
               values: ["active", "inactive"]
 
   - name: int_app_contracts_latest
-    description: "Most recent contract per org and app."
+    description: "Most recent contract per org/app by start/end date (assumes one active contract for pricing)."
     columns:
       - name: org_id
         tests:
@@ -45,7 +45,7 @@ models:
           - not_null
 
   - name: int_app_spend_monthly
-    description: "Monthly spend per org and app from invoices."
+    description: "Monthly spend per org/app from invoices (invoice date month; no proration)."
     columns:
       - name: org_id
         tests:
@@ -58,7 +58,7 @@ models:
           - not_null
 
   - name: int_app_spend_12m
-    description: "Trailing 12 month spend summary per org and app."
+    description: "Trailing 12-month spend summary per org/app using calendar months relative to current date."
     columns:
       - name: org_id
         tests:
@@ -68,7 +68,7 @@ models:
           - not_null
 
   - name: int_app_monthly_activity
-    description: "Monthly active users per org and app from login and usage events."
+    description: "Monthly active users per org/app from login/usage events; any event counts as activity."
     columns:
       - name: org_id
         tests:
@@ -81,7 +81,7 @@ models:
           - not_null
 
   - name: int_app_metrics
-    description: "Core app metrics including assigned seats, activity, and spend."
+    description: "Core app metrics combining assignments, activity, contracts, and spend (utilization and cost per active seat)."
     columns:
       - name: org_id
         tests:

@@ -24,6 +24,13 @@ Seat Intelligence connects Okta identity data with SaaS spend to surface usage t
 - SaaS spend: contracts, invoices, billed seats, price per seat
 - Org metadata: industry, size band, region
 
+## Synthetic Data Scope (Generator Defaults)
+- Orgs: 12 orgs, 120–800 employees each
+- Orgs created: within last ~5 years
+- Users created: between org creation and ~1 week ago
+- Activity/logins: concentrated in last 90 days (active users within last 30 days)
+- Spend/invoices: monthly invoices for last 12 months
+
 ## Outputs (Data Marts)
 - `mart_app_overview` (app KPIs)
 - `mart_user_reclaim_candidates` (inactive users + impact)
@@ -32,7 +39,7 @@ Seat Intelligence connects Okta identity data with SaaS spend to surface usage t
 - `mart_benchmarks` (cohort percentiles)
 
 ## Core Metrics (MVP)
-- Active user: login within last 60 days (configurable)
+- Active user: login/usage within last 60 days (configurable via dbt `active_user_days` var or model default)
 - Utilization rate = active_seats / assigned_seats
 - Cost per active seat = total_cost / active_seats
 - Over-licensed flag = utilization_rate < cohort p25
