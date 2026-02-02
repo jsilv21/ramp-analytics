@@ -1,0 +1,9 @@
+{
+  "dbt.dbtProjectDir": "ramp_analytics",
+  "dbt.profilesDir": "ramp_analytics",
+  "dbt.profile": "ramp_analytics",
+  "dbt.target": "dev",
+  "dbt.env": {
+    "DBT_PROFILES_DIR": "${workspaceFolder}\\ramp_analytics"
+  }
+}

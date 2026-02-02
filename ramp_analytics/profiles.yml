@@ -3,6 +3,6 @@ ramp_analytics:
   outputs:
     dev:
       type: duckdb
-      path: warehouse/ramp.duckdb
+      path: ../warehouse/ramp.duckdb
       schema: analytics
       threads: 4
