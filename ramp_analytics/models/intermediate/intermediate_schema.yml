@@ -1,0 +1,91 @@
+version: 2
+
+models:
+  - name: int_app_assignments
+    description: "User to app assignments rolled up to one row per user and app."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null
+      - name: user_id
+        tests:
+          - not_null
+
+  - name: int_user_app_activity
+    description: "Latest login and usage activity per user and app."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null
+      - name: user_id
+        tests:
+          - not_null
+      - name: activity_status
+        tests:
+          - accepted_values:
+              values: ["active", "inactive"]
+
+  - name: int_app_contracts_latest
+    description: "Most recent contract per org and app."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null
+      - name: contract_id
+        tests:
+          - not_null
+
+  - name: int_app_spend_monthly
+    description: "Monthly spend per org and app from invoices."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null
+      - name: month
+        tests:
+          - not_null
+
+  - name: int_app_spend_12m
+    description: "Trailing 12 month spend summary per org and app."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null
+
+  - name: int_app_monthly_activity
+    description: "Monthly active users per org and app from login and usage events."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null
+      - name: month
+        tests:
+          - not_null
+
+  - name: int_app_metrics
+    description: "Core app metrics including assigned seats, activity, and spend."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null

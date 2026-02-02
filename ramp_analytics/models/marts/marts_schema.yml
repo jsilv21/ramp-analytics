@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  - name: mart_benchmarks
+    description: "Cohort benchmarks by industry, employee band, and region."
+    columns:
+      - name: industry
+        tests:
+          - not_null
+      - name: employee_band
+        tests:
+          - not_null
+      - name: region
+        tests:
+          - not_null
+
+  - name: mart_app_overview
+    description: "App-level KPIs with utilization, spend, and rightsizing signals."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null
+      - name: utilization_rate
+      - name: over_licensed_flag
+
+  - name: mart_user_reclaim_candidates
+    description: "Inactive user assignments with estimated reclaim savings."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null
+      - name: user_id
+        tests:
+          - not_null
+      - name: recommendation_action
+        tests:
+          - accepted_values:
+              values: ["reclaim_seat"]
+
+  - name: mart_spend_vs_usage
+    description: "Monthly spend and usage trends with efficiency scoring."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: app_id
+        tests:
+          - not_null
+      - name: month
+        tests:
+          - not_null
+
+  - name: mart_recommendations
+    description: "Actionable recommendations with evidence and expected savings."
+    columns:
+      - name: org_id
+        tests:
+          - not_null
+      - name: recommendation_id
+        tests:
+          - not_null
+      - name: recommendation_type
+        tests:
+          - accepted_values:
+              values:
+                - reclaim_inactive_user
+                - right_size_app
+                - investigate_spend_spike
+                - consolidate_apps
