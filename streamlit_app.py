@@ -7,8 +7,7 @@ import duckdb
 import pandas as pd
 import streamlit as st
 
-BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_DB_PATH = BASE_DIR / "warehouse" / "ramp.duckdb"
+DEFAULT_DB_PATH = Path("../warehouse/ramp.duckdb")
 
 
 def get_db_path() -> Path:
@@ -103,14 +102,20 @@ def main() -> None:
     st.sidebar.header("Filters")
     org_options = ["All"] + sorted(app_overview["org_name"].dropna().unique().tolist())
     app_options = ["All"] + sorted(app_overview["app_name"].dropna().unique().tolist())
-    category_options = ["All"] + sorted(app_overview["category"].dropna().unique().tolist())
+    category_options = ["All"] + sorted(
+        app_overview["category"].dropna().unique().tolist()
+    )
 
     selected_org = st.sidebar.selectbox("Organization", org_options)
     selected_app = st.sidebar.selectbox("Application", app_options)
     selected_category = st.sidebar.selectbox("Category", category_options)
 
-    filtered_overview = apply_filters(app_overview, selected_org, selected_app, selected_category)
-    filtered_spend = apply_filters(spend_vs_usage, selected_org, selected_app, selected_category)
+    filtered_overview = apply_filters(
+        app_overview, selected_org, selected_app, selected_category
+    )
+    filtered_spend = apply_filters(
+        spend_vs_usage, selected_org, selected_app, selected_category
+    )
 
     total_spend = filtered_overview["total_spend_12m"].sum()
     avg_utilization = filtered_overview["utilization_rate"].mean()
@@ -119,7 +124,10 @@ def main() -> None:
 
     kpi_cols = st.columns(4)
     kpi_cols[0].metric("Total Spend (12m)", f"${total_spend:,.0f}")
-    kpi_cols[1].metric("Avg Utilization", f"{avg_utilization:.1%}" if pd.notna(avg_utilization) else "—")
+    kpi_cols[1].metric(
+        "Avg Utilization",
+        f"{avg_utilization:.1%}" if pd.notna(avg_utilization) else "—",
+    )
     kpi_cols[2].metric("Inactive Seats", f"{inactive_seats:,.0f}")
     kpi_cols[3].metric("Rightsizing Opportunity", f"${rightsizing:,.0f}")
 
@@ -129,8 +137,17 @@ def main() -> None:
         .sort_values("rightsizing_opportunity", ascending=False)
         .head(10)
     )
+    top_rightsizing_display = top_rightsizing.copy()
+    top_rightsizing_display["utilization_rate"] = (
+        top_rightsizing_display["utilization_rate"] * 100
+    ).round(1).astype(str) + "%"
+    top_rightsizing_display["rightsizing_opportunity"] = (
+        top_rightsizing_display["rightsizing_opportunity"]
+        .fillna(0)
+        .map(lambda value: f"${value:,.0f}")
+    )
     st.dataframe(
-        top_rightsizing[
+        top_rightsizing_display[
             [
                 "org_name",
                 "app_name",
@@ -149,14 +166,31 @@ def main() -> None:
     else:
         trend = (
             filtered_spend.groupby("month", as_index=False)
-            .agg(total_amount=("total_amount", "sum"), active_users=("active_users", "sum"))
+            .agg(
+                total_amount=("total_amount", "sum"),
+                active_users=("active_users", "sum"),
+            )
             .sort_values("month")
         )
         st.line_chart(trend.set_index("month")[["total_amount", "active_users"]])
 
     st.subheader("App Overview (Filtered)")
+    overview_display = filtered_overview.copy()
+    overview_display["utilization_rate"] = (
+        overview_display["utilization_rate"] * 100
+    ).round(1).astype(str) + "%"
+    overview_display["total_spend_12m"] = (
+        overview_display["total_spend_12m"]
+        .fillna(0)
+        .map(lambda value: f"${value:,.0f}")
+    )
+    overview_display["cost_per_active_seat"] = (
+        overview_display["cost_per_active_seat"]
+        .fillna(0)
+        .map(lambda value: f"${value:,.0f}")
+    )
     st.dataframe(
-        filtered_overview[
+        overview_display[
             [
                 "org_name",
                 "app_name",
