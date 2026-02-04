@@ -2,36 +2,45 @@ version: 2
 
 models:
   - name: stg_orgs
+    description: "Organizations in scope for the demo. One row per org."
     columns:
       - name: org_id
+        description: "Unique organization identifier."
         tests:
           - not_null
           - unique
 
   - name: stg_okta_users
+    description: "Okta users for each org. One row per user."
     columns:
       - name: user_id
+        description: "Unique user identifier."
         tests:
           - not_null
           - unique
       - name: org_id
+        description: "Owning organization."
         tests:
           - not_null
           - relationships:
               to: ref('stg_orgs')
               field: org_id
       - name: status
+        description: "Okta user lifecycle status."
         tests:
           - accepted_values:
               values: ["active", "suspended", "deprovisioned"]
 
   - name: stg_okta_groups
+    description: "Okta groups per org. One row per group."
     columns:
       - name: group_id
+        description: "Unique group identifier."
         tests:
           - not_null
           - unique
       - name: org_id
+        description: "Owning organization."
         tests:
           - not_null
           - relationships:
@@ -39,12 +48,15 @@ models:
               field: org_id
 
   - name: stg_okta_apps
+    description: "Okta-managed SaaS applications per org. One row per app."
     columns:
       - name: app_id
+        description: "Unique app identifier."
         tests:
           - not_null
           - unique
       - name: org_id
+        description: "Owning organization."
         tests:
           - not_null
           - relationships:
@@ -52,24 +64,29 @@ models:
               field: org_id
 
   - name: stg_okta_assignments
+    description: "User-to-app assignments from Okta. One row per assignment."
     columns:
       - name: assignment_id
+        description: "Unique assignment identifier."
         tests:
           - not_null
           - unique
       - name: org_id
+        description: "Owning organization."
         tests:
           - not_null
           - relationships:
               to: ref('stg_orgs')
               field: org_id
       - name: user_id
+        description: "Assigned user."
         tests:
           - not_null
           - relationships:
               to: ref('stg_okta_users')
               field: user_id
       - name: app_id
+        description: "Assigned app."
         tests:
           - not_null
           - relationships:
@@ -77,24 +94,29 @@ models:
               field: app_id
 
   - name: stg_okta_logins
+    description: "Okta login events by user/app. One row per login event."
     columns:
       - name: login_id
+        description: "Unique login event identifier."
         tests:
           - not_null
           - unique
       - name: org_id
+        description: "Owning organization."
         tests:
           - not_null
           - relationships:
               to: ref('stg_orgs')
               field: org_id
       - name: user_id
+        description: "User who logged in."
         tests:
           - not_null
           - relationships:
               to: ref('stg_okta_users')
               field: user_id
       - name: app_id
+        description: "App the user logged into."
         tests:
           - not_null
           - relationships:
@@ -102,27 +124,33 @@ models:
               field: app_id
 
   - name: stg_saas_usage
+    description: "SaaS product usage events. One row per usage event."
     columns:
       - name: usage_id
+        description: "Unique usage event identifier."
         tests:
           - not_null
           - unique
       - name: activity_at
+        description: "Timestamp of the usage event."
         tests:
           - not_null
       - name: org_id
+        description: "Owning organization."
         tests:
           - not_null
           - relationships:
               to: ref('stg_orgs')
               field: org_id
       - name: user_id
+        description: "User who generated the usage event."
         tests:
           - not_null
           - relationships:
               to: ref('stg_okta_users')
               field: user_id
       - name: app_id
+        description: "App where the usage occurred."
         tests:
           - not_null
           - relationships:
@@ -130,18 +158,22 @@ models:
               field: app_id
 
   - name: stg_saas_contracts
+    description: "SaaS contract metadata per org/app. One row per contract."
     columns:
       - name: contract_id
+        description: "Unique contract identifier."
         tests:
           - not_null
           - unique
       - name: org_id
+        description: "Owning organization."
         tests:
           - not_null
           - relationships:
               to: ref('stg_orgs')
               field: org_id
       - name: app_id
+        description: "Contracted app."
         tests:
           - not_null
           - relationships:
@@ -149,24 +181,29 @@ models:
               field: app_id
 
   - name: stg_saas_invoices
+    description: "SaaS invoice line items. One row per invoice."
     columns:
       - name: invoice_id
+        description: "Unique invoice identifier."
         tests:
           - not_null
           - unique
       - name: org_id
+        description: "Owning organization."
         tests:
           - not_null
           - relationships:
               to: ref('stg_orgs')
               field: org_id
       - name: contract_id
+        description: "Associated contract."
         tests:
           - not_null
           - relationships:
               to: ref('stg_saas_contracts')
               field: contract_id
       - name: app_id
+        description: "Billed app."
         tests:
           - not_null
           - relationships:
