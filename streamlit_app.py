@@ -40,6 +40,7 @@ def load_app_overview(db_path: Path) -> pd.DataFrame:
               total_spend_12m,
               avg_monthly_spend_12m,
               cost_per_active_seat,
+              cohort_utilization_p25,
               rightsizing_opportunity,
               over_licensed_flag
             from analytics.mart_app_overview
@@ -262,6 +263,51 @@ def main() -> None:
             .properties(height=320)
         )
         st.altair_chart(hist, use_container_width=True)
+
+    st.subheader("Utilization vs Peer Benchmark (P25)")
+    benchmark_source = filtered_overview.dropna(
+        subset=["utilization_rate", "cohort_utilization_p25", "total_spend_12m"]
+    )
+    if benchmark_source.empty:
+        st.info("No peer benchmark data available for the selected filters.")
+    else:
+        benchmark = (
+            alt.Chart(benchmark_source)
+            .mark_circle(opacity=0.75)
+            .encode(
+                x=alt.X(
+                    "cohort_utilization_p25:Q",
+                    title="Peer Utilization (P25)",
+                    axis=alt.Axis(format=".0%"),
+                ),
+                y=alt.Y(
+                    "utilization_rate:Q",
+                    title="Your Utilization",
+                    axis=alt.Axis(format=".0%"),
+                ),
+                size=alt.Size(
+                    "total_spend_12m:Q",
+                    title="Total Spend (12m)",
+                    scale=alt.Scale(range=[40, 800]),
+                ),
+                color=alt.Color(
+                    "over_licensed_flag:N", title="Over-Licensed", scale=alt.Scale(domain=[False, True], range=["#4C78A8", "#E45756"])
+                ),
+                tooltip=[
+                    alt.Tooltip("org_name:N", title="Org"),
+                    alt.Tooltip("app_name:N", title="App"),
+                    alt.Tooltip("utilization_rate:Q", title="Your Utilization", format=".1%"),
+                    alt.Tooltip("cohort_utilization_p25:Q", title="Peer P25", format=".1%"),
+                    alt.Tooltip("over_licensed_flag:N", title="Over-Licensed"),
+                    alt.Tooltip("total_spend_12m:Q", title="Total Spend (12m)", format="$,.0f"),
+                ],
+            )
+            .properties(height=380)
+        )
+        diagonal = alt.Chart(
+            pd.DataFrame({"x": [0, 1], "y": [0, 1]})
+        ).mark_line(strokeDash=[4, 4], color="#9A9A9A").encode(x="x:Q", y="y:Q")
+        st.altair_chart(benchmark + diagonal, use_container_width=True)
 
     st.subheader("App Overview (Filtered)")
     overview_display = filtered_overview.copy()
