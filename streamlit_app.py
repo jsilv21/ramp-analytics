@@ -77,15 +77,6 @@ def apply_filters(df: pd.DataFrame, org: str, app: str, category: str) -> pd.Dat
     return filtered
 
 
-def percentile_vs_peers(value: float, peers: pd.Series) -> float | None:
-    series = peers.dropna()
-    if pd.isna(value) or series.empty:
-        return None
-    lower = (series < value).mean()
-    equal = (series == value).mean()
-    return float(lower + 0.5 * equal)
-
-
 def main() -> None:
     st.set_page_config(page_title="Seat Intelligence", layout="wide")
     st.title("Seat Intelligence Overview")
@@ -119,6 +110,31 @@ def main() -> None:
     selected_org = st.sidebar.selectbox("Organization", org_options)
     selected_app = st.sidebar.selectbox("Application", app_options)
     selected_category = st.sidebar.selectbox("Category", category_options)
+
+    with st.expander("How metrics are calculated"):
+        st.markdown(
+            """
+            **Utilization rate** = active seats / assigned seats. A seat is **active**
+            when the user has a login or usage event in the last `active_user_days`
+            (defaults to 60 days in dbt).
+
+            **Active seats** = distinct assigned users with recent activity.
+
+            **Inactive seats** = assigned users without recent activity.
+
+            **Total spend (12m)** = trailing 12-month spend per app.
+
+            **Avg monthly spend (12m)** = trailing 12-month spend / 12.
+
+            **Cost per active seat** = total spend (12m) / active seats.
+
+            **Rightsizing opportunity** = max(assigned seats − active seats, 0)
+            × price per seat (requires contract pricing).
+
+            **Over‑licensed flag** = utilization below the 25th percentile of the
+            org’s cohort (industry + employee band + region).
+            """
+        )
 
     filtered_overview = apply_filters(
         app_overview, selected_org, selected_app, selected_category
@@ -223,70 +239,29 @@ def main() -> None:
         )
         st.altair_chart(scatter, use_container_width=True)
 
-    st.subheader("Peer Percentile Heatmap")
-    if selected_org == "All":
-        st.info("Select a single organization to view peer benchmarks.")
+    st.subheader("Utilization Distribution")
+    utilization_source = filtered_overview.dropna(subset=["utilization_rate"])
+    if utilization_source.empty:
+        st.info("No utilization data available for the selected filters.")
     else:
-        org_rows = filtered_overview[filtered_overview["org_name"] == selected_org]
-        if org_rows.empty:
-            st.info("No app data available for the selected organization.")
-        else:
-            peer_rows = app_overview[
-                (app_overview["industry"] == org_rows["industry"].iloc[0])
-                & (app_overview["employee_band"] == org_rows["employee_band"].iloc[0])
-                & (app_overview["region"] == org_rows["region"].iloc[0])
-                & (app_overview["org_name"] != selected_org)
-            ]
-            percentile_rows = []
-            for _, row in org_rows.iterrows():
-                app_peers = peer_rows[peer_rows["app_name"] == row["app_name"]]
-                utilization_pct = percentile_vs_peers(
-                    row["utilization_rate"], app_peers["utilization_rate"]
-                )
-                cost_pct = percentile_vs_peers(
-                    row["cost_per_active_seat"], app_peers["cost_per_active_seat"]
-                )
-                if utilization_pct is not None:
-                    percentile_rows.append(
-                        {
-                            "app_name": row["app_name"],
-                            "metric": "Utilization Rate",
-                            "percentile": utilization_pct,
-                        }
-                    )
-                if cost_pct is not None:
-                    percentile_rows.append(
-                        {
-                            "app_name": row["app_name"],
-                            "metric": "Cost per Active Seat",
-                            "percentile": cost_pct,
-                        }
-                    )
-
-            heatmap_source = pd.DataFrame(percentile_rows)
-            if heatmap_source.empty:
-                st.info("Not enough peer data to compute benchmarks.")
-            else:
-                heatmap = (
-                    alt.Chart(heatmap_source)
-                    .mark_rect()
-                    .encode(
-                        x=alt.X("metric:N", title="Metric"),
-                        y=alt.Y("app_name:N", title="App"),
-                        color=alt.Color(
-                            "percentile:Q",
-                            title="Peer Percentile",
-                            scale=alt.Scale(domain=[0, 1], scheme="blues"),
-                        ),
-                        tooltip=[
-                            alt.Tooltip("app_name:N", title="App"),
-                            alt.Tooltip("metric:N", title="Metric"),
-                            alt.Tooltip("percentile:Q", title="Percentile", format=".0%"),
-                        ],
-                    )
-                    .properties(height=min(500, 28 * heatmap_source["app_name"].nunique() + 40))
-                )
-                st.altair_chart(heatmap, use_container_width=True)
+        hist = (
+            alt.Chart(utilization_source)
+            .mark_bar(color="#4C78A8")
+            .encode(
+                x=alt.X(
+                    "utilization_rate:Q",
+                    bin=alt.Bin(maxbins=20),
+                    title="Utilization Rate",
+                    axis=alt.Axis(format=".0%"),
+                ),
+                y=alt.Y("count():Q", title="Apps"),
+                tooltip=[
+                    alt.Tooltip("count():Q", title="Apps"),
+                ],
+            )
+            .properties(height=320)
+        )
+        st.altair_chart(hist, use_container_width=True)
 
     st.subheader("App Overview (Filtered)")
     overview_display = filtered_overview.copy()
