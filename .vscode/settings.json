@@ -6,5 +6,6 @@
   "dbt.env": {
     "DBT_PROFILES_DIR": "${workspaceFolder}\\ramp_analytics"
   },
-  "dbt.enableNewLineagePanel": true
+  "dbt.enableNewLineagePanel": true,
+  "dbt.perspectiveTheme": "Vintage"
 }
