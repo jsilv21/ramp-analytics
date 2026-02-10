@@ -13,6 +13,9 @@ models:
       - name: user_id
         tests:
           - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id, user_id]
 
   - name: int_user_app_activity
     description: "Latest login/usage activity per org/app/user. Activity is app-specific and classed active/inactive via `active_user_days`."
@@ -30,6 +33,9 @@ models:
         tests:
           - accepted_values:
               values: ["active", "inactive"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id, user_id]
 
   - name: int_app_contracts_latest
     description: "Most recent contract per org/app by start/end date (assumes one active contract for pricing)."
@@ -43,6 +49,9 @@ models:
       - name: contract_id
         tests:
           - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id]
 
   - name: int_app_spend_monthly
     description: "Monthly spend per org/app from invoices (invoice date month; no proration)."
@@ -56,6 +65,17 @@ models:
       - name: month
         tests:
           - not_null
+      - name: total_amount
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: seats_billed
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id, month]
 
   - name: int_app_spend_12m
     description: "Trailing 12-month spend summary per org/app using calendar months relative to current date."
@@ -66,6 +86,21 @@ models:
       - name: app_id
         tests:
           - not_null
+      - name: total_spend_12m
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: avg_monthly_spend_12m
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: avg_seats_billed_12m
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id]
 
   - name: int_app_monthly_activity
     description: "Monthly active users per org/app from login/usage events; any event counts as activity."
@@ -79,6 +114,25 @@ models:
       - name: month
         tests:
           - not_null
+      - name: active_users
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: login_events
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: usage_events
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: usage_minutes
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id, month]
 
   - name: int_app_metrics
     description: "Core app metrics combining assignments, activity, contracts, and spend (utilization and cost per active seat)."
@@ -89,3 +143,30 @@ models:
       - name: app_id
         tests:
           - not_null
+      - name: utilization_rate
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 1"
+      - name: cost_per_active_seat
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: assigned_seats
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: active_seats
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: inactive_seats
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: total_spend_12m
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id]

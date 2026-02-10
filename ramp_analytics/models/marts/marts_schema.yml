@@ -13,6 +13,9 @@ models:
       - name: region
         tests:
           - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [industry, employee_band, region]
 
   - name: mart_app_overview
     description: "App-level KPIs with utilization, spend, and rightsizing signals."
@@ -24,7 +27,53 @@ models:
         tests:
           - not_null
       - name: utilization_rate
+        description: "Active seats divided by assigned seats."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 1"
+      - name: assigned_seats
+        description: "Distinct users assigned to the app."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: active_seats
+        description: "Assigned users with recent activity (see active_user_days)."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: inactive_seats
+        description: "Assigned users without recent activity."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: total_spend_12m
+        description: "Trailing 12-month spend per app."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: avg_monthly_spend_12m
+        description: "Trailing 12-month spend divided by 12."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: cost_per_active_seat
+        description: "Total spend (12m) divided by active seats."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: rightsizing_opportunity
+        description: "Max(assigned seats - active seats, 0) * price per seat."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
       - name: over_licensed_flag
+        description: "True when utilization is below cohort P25."
+        tests:
+          - accepted_values:
+              values: [true, false]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id]
 
   - name: mart_user_reclaim_candidates
     description: "Inactive user assignments with estimated reclaim savings."
@@ -42,6 +91,9 @@ models:
         tests:
           - accepted_values:
               values: ["reclaim_seat"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id, user_id]
 
   - name: mart_spend_vs_usage
     description: "Monthly spend and usage trends with efficiency scoring."
@@ -55,6 +107,25 @@ models:
       - name: month
         tests:
           - not_null
+      - name: total_amount
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: active_users
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: utilization_rate_month
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 1"
+      - name: cost_per_active_seat_month
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, app_id, month]
 
   - name: mart_recommendations
     description: "Actionable recommendations with evidence and expected savings."
@@ -73,3 +144,11 @@ models:
                 - right_size_app
                 - investigate_spend_spike
                 - consolidate_apps
+      - name: expected_savings
+        description: "Estimated savings for the recommendation."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [org_id, recommendation_id]

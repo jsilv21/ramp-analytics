@@ -13,7 +13,8 @@ Run dbt with:
 
 ```bash
 uv run dbt --project-dir ramp_analytics debug
-uv run dbt --project-dir ramp_analytics run
+uv run dbt --project-dir ramp_analytics deps
+uv run dbt --project-dir ramp_analytics build
 ```
 
 ## Streamlit (frontend)

@@ -1,0 +1,13 @@
+version: 2
+
+exposures:
+  - name: streamlit_seat_intelligence
+    type: dashboard
+    description: "Streamlit app that surfaces seat utilization, spend, and rightsizing insights."
+    depends_on:
+      - ref('mart_app_overview')
+      - ref('mart_spend_vs_usage')
+      - ref('mart_recommendations')
+    owner:
+      name: Ramp Analytics
+      email: analytics@example.com

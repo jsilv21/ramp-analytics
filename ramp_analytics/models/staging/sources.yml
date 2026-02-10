@@ -5,11 +5,43 @@ sources:
     schema: raw
     tables:
       - name: raw_orgs
+        loaded_at_field: created_at
+        freshness:
+          warn_after: {count: 30, period: day}
+          error_after: {count: 90, period: day}
       - name: raw_okta_users
+        loaded_at_field: created_at
+        freshness:
+          warn_after: {count: 14, period: day}
+          error_after: {count: 30, period: day}
       - name: raw_okta_groups
       - name: raw_okta_apps
+        loaded_at_field: enabled_at
+        freshness:
+          warn_after: {count: 30, period: day}
+          error_after: {count: 90, period: day}
       - name: raw_okta_assignments
+        loaded_at_field: assigned_at
+        freshness:
+          warn_after: {count: 7, period: day}
+          error_after: {count: 30, period: day}
       - name: raw_okta_logins
+        loaded_at_field: login_ts
+        freshness:
+          warn_after: {count: 2, period: day}
+          error_after: {count: 7, period: day}
       - name: raw_saas_usage
+        loaded_at_field: activity_ts
+        freshness:
+          warn_after: {count: 2, period: day}
+          error_after: {count: 7, period: day}
       - name: raw_saas_contracts
+        loaded_at_field: start_date
+        freshness:
+          warn_after: {count: 30, period: day}
+          error_after: {count: 90, period: day}
       - name: raw_saas_invoices
+        loaded_at_field: invoice_date
+        freshness:
+          warn_after: {count: 7, period: day}
+          error_after: {count: 30, period: day}
