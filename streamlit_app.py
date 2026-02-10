@@ -1,0 +1,347 @@
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import altair as alt
+import duckdb
+import pandas as pd
+import streamlit as st
+
+DEFAULT_DB_PATH = Path("../warehouse/ramp.duckdb")
+
+
+def get_db_path() -> Path:
+    env_path = os.getenv("RAMP_DUCKDB_PATH")
+    if env_path:
+        return Path(env_path)
+    return DEFAULT_DB_PATH
+
+
+@st.cache_data(ttl=300)
+def load_app_overview(db_path: Path) -> pd.DataFrame:
+    with duckdb.connect(str(db_path)) as conn:
+        return conn.execute(
+            """
+            select
+              org_id,
+              org_name,
+              industry,
+              employee_band,
+              region,
+              app_id,
+              app_name,
+              category,
+              vendor,
+              assigned_seats,
+              active_seats,
+              inactive_seats,
+              utilization_rate,
+              total_spend_12m,
+              avg_monthly_spend_12m,
+              cost_per_active_seat,
+              cohort_utilization_p25,
+              rightsizing_opportunity,
+              over_licensed_flag
+            from analytics.mart_app_overview
+            """
+        ).df()
+
+
+@st.cache_data(ttl=300)
+def load_spend_vs_usage(db_path: Path) -> pd.DataFrame:
+    with duckdb.connect(str(db_path)) as conn:
+        return conn.execute(
+            """
+            select
+              month,
+              org_id,
+              org_name,
+              app_id,
+              app_name,
+              category,
+              total_amount,
+              active_users
+            from analytics.mart_spend_vs_usage
+            """
+        ).df()
+
+
+def apply_filters(df: pd.DataFrame, org: str, app: str, category: str) -> pd.DataFrame:
+    filtered = df
+    if org != "All":
+        filtered = filtered[filtered["org_name"] == org]
+    if app != "All":
+        filtered = filtered[filtered["app_name"] == app]
+    if category != "All":
+        filtered = filtered[filtered["category"] == category]
+    return filtered
+
+
+def main() -> None:
+    st.set_page_config(page_title="Seat Intelligence", layout="wide")
+    st.title("Seat Intelligence Overview")
+
+    db_path = get_db_path()
+    if not db_path.exists():
+        st.error(
+            f"DuckDB file not found: {db_path}. "
+            "Run dbt to build models or set RAMP_DUCKDB_PATH."
+        )
+        return
+
+    try:
+        app_overview = load_app_overview(db_path)
+        spend_vs_usage = load_spend_vs_usage(db_path)
+    except Exception as exc:  # pragma: no cover - surface to UI
+        st.error(f"Failed to load data: {exc}")
+        return
+
+    if app_overview.empty:
+        st.warning("No rows found in analytics.mart_app_overview.")
+        return
+
+    st.sidebar.header("Filters")
+    org_options = ["All"] + sorted(app_overview["org_name"].dropna().unique().tolist())
+    app_options = ["All"] + sorted(app_overview["app_name"].dropna().unique().tolist())
+    category_options = ["All"] + sorted(
+        app_overview["category"].dropna().unique().tolist()
+    )
+
+    selected_org = st.sidebar.selectbox("Organization", org_options)
+    selected_app = st.sidebar.selectbox("Application", app_options)
+    selected_category = st.sidebar.selectbox("Category", category_options)
+
+    with st.expander("How metrics are calculated"):
+        st.markdown(
+            """
+            **Utilization rate** = active seats / assigned seats. A seat is **active**
+            when the user has a login or usage event in the last `active_user_days`
+            (defaults to 60 days in dbt).
+
+            **Active seats** = distinct assigned users with recent activity.
+
+            **Inactive seats** = assigned users without recent activity.
+
+            **Total spend (12m)** = trailing 12-month spend per app.
+
+            **Avg monthly spend (12m)** = trailing 12-month spend / 12.
+
+            **Cost per active seat** = total spend (12m) / active seats.
+
+            **Rightsizing opportunity** = max(assigned seats − active seats, 0)
+            × price per seat (requires contract pricing).
+
+            **Over‑licensed flag** = utilization below the 25th percentile of the
+            org’s cohort (industry + employee band + region).
+            """
+        )
+
+    filtered_overview = apply_filters(
+        app_overview, selected_org, selected_app, selected_category
+    )
+    filtered_spend = apply_filters(
+        spend_vs_usage, selected_org, selected_app, selected_category
+    )
+
+    total_spend = filtered_overview["total_spend_12m"].sum()
+    avg_utilization = filtered_overview["utilization_rate"].mean()
+    inactive_seats = filtered_overview["inactive_seats"].sum()
+    rightsizing = filtered_overview["rightsizing_opportunity"].sum()
+
+    kpi_cols = st.columns(4)
+    kpi_cols[0].metric("Total Spend (12m)", f"${total_spend:,.0f}")
+    kpi_cols[1].metric(
+        "Avg Utilization",
+        f"{avg_utilization:.1%}" if pd.notna(avg_utilization) else "—",
+    )
+    kpi_cols[2].metric("Inactive Seats", f"{inactive_seats:,.0f}")
+    kpi_cols[3].metric("Rightsizing Opportunity", f"${rightsizing:,.0f}")
+
+    st.subheader("Top Rightsizing Opportunities")
+    top_rightsizing = (
+        filtered_overview.dropna(subset=["rightsizing_opportunity"])
+        .sort_values("rightsizing_opportunity", ascending=False)
+        .head(10)
+    )
+    top_rightsizing_display = top_rightsizing.copy()
+    top_rightsizing_display["utilization_rate"] = (
+        top_rightsizing_display["utilization_rate"] * 100
+    ).round(1).astype(str) + "%"
+    top_rightsizing_display["rightsizing_opportunity"] = (
+        top_rightsizing_display["rightsizing_opportunity"]
+        .fillna(0)
+        .map(lambda value: f"${value:,.0f}")
+    )
+    st.dataframe(
+        top_rightsizing_display[
+            [
+                "org_name",
+                "app_name",
+                "category",
+                "inactive_seats",
+                "utilization_rate",
+                "rightsizing_opportunity",
+            ]
+        ],
+        use_container_width=True,
+    )
+
+    st.subheader("Utilization vs Cost per Active Seat")
+    scatter_source = filtered_overview.dropna(
+        subset=[
+            "utilization_rate",
+            "cost_per_active_seat",
+            "total_spend_12m",
+            "category",
+        ]
+    )
+    if scatter_source.empty:
+        st.info("No utilization data available for the selected filters.")
+    else:
+        scatter = (
+            alt.Chart(scatter_source)
+            .mark_circle(opacity=0.7)
+            .encode(
+                x=alt.X(
+                    "utilization_rate:Q",
+                    title="Utilization Rate",
+                    axis=alt.Axis(format=".0%"),
+                ),
+                y=alt.Y(
+                    "cost_per_active_seat:Q",
+                    title="Cost per Active Seat",
+                    axis=alt.Axis(format="$,.0f"),
+                ),
+                size=alt.Size(
+                    "total_spend_12m:Q",
+                    title="Total Spend (12m)",
+                    scale=alt.Scale(range=[40, 800]),
+                ),
+                color=alt.Color("category:N", title="Category"),
+                tooltip=[
+                    alt.Tooltip("org_name:N", title="Org"),
+                    alt.Tooltip("app_name:N", title="App"),
+                    alt.Tooltip("category:N", title="Category"),
+                    alt.Tooltip("utilization_rate:Q", title="Utilization", format=".1%"),
+                    alt.Tooltip(
+                        "cost_per_active_seat:Q",
+                        title="Cost per Active Seat",
+                        format="$,.0f",
+                    ),
+                    alt.Tooltip(
+                        "total_spend_12m:Q",
+                        title="Total Spend (12m)",
+                        format="$,.0f",
+                    ),
+                ],
+            )
+            .properties(height=380)
+        )
+        st.altair_chart(scatter, use_container_width=True)
+
+    st.subheader("Utilization Distribution")
+    utilization_source = filtered_overview.dropna(subset=["utilization_rate"])
+    if utilization_source.empty:
+        st.info("No utilization data available for the selected filters.")
+    else:
+        hist = (
+            alt.Chart(utilization_source)
+            .mark_bar(color="#4C78A8")
+            .encode(
+                x=alt.X(
+                    "utilization_rate:Q",
+                    bin=alt.Bin(maxbins=20),
+                    title="Utilization Rate",
+                    axis=alt.Axis(format=".0%"),
+                ),
+                y=alt.Y("count():Q", title="Apps"),
+                tooltip=[
+                    alt.Tooltip("count():Q", title="Apps"),
+                ],
+            )
+            .properties(height=320)
+        )
+        st.altair_chart(hist, use_container_width=True)
+
+    st.subheader("Utilization vs Peer Benchmark (P25)")
+    benchmark_source = filtered_overview.dropna(
+        subset=["utilization_rate", "cohort_utilization_p25", "total_spend_12m"]
+    )
+    if benchmark_source.empty:
+        st.info("No peer benchmark data available for the selected filters.")
+    else:
+        benchmark = (
+            alt.Chart(benchmark_source)
+            .mark_circle(opacity=0.75)
+            .encode(
+                x=alt.X(
+                    "cohort_utilization_p25:Q",
+                    title="Peer Utilization (P25)",
+                    axis=alt.Axis(format=".0%"),
+                ),
+                y=alt.Y(
+                    "utilization_rate:Q",
+                    title="Your Utilization",
+                    axis=alt.Axis(format=".0%"),
+                ),
+                size=alt.Size(
+                    "total_spend_12m:Q",
+                    title="Total Spend (12m)",
+                    scale=alt.Scale(range=[40, 800]),
+                ),
+                color=alt.Color(
+                    "over_licensed_flag:N", title="Over-Licensed", scale=alt.Scale(domain=[False, True], range=["#4C78A8", "#E45756"])
+                ),
+                tooltip=[
+                    alt.Tooltip("org_name:N", title="Org"),
+                    alt.Tooltip("app_name:N", title="App"),
+                    alt.Tooltip("utilization_rate:Q", title="Your Utilization", format=".1%"),
+                    alt.Tooltip("cohort_utilization_p25:Q", title="Peer P25", format=".1%"),
+                    alt.Tooltip("over_licensed_flag:N", title="Over-Licensed"),
+                    alt.Tooltip("total_spend_12m:Q", title="Total Spend (12m)", format="$,.0f"),
+                ],
+            )
+            .properties(height=380)
+        )
+        diagonal = alt.Chart(
+            pd.DataFrame({"x": [0, 1], "y": [0, 1]})
+        ).mark_line(strokeDash=[4, 4], color="#9A9A9A").encode(x="x:Q", y="y:Q")
+        st.altair_chart(benchmark + diagonal, use_container_width=True)
+
+    st.subheader("App Overview (Filtered)")
+    overview_display = filtered_overview.copy()
+    overview_display["utilization_rate"] = (
+        overview_display["utilization_rate"] * 100
+    ).round(1).astype(str) + "%"
+    overview_display["total_spend_12m"] = (
+        overview_display["total_spend_12m"]
+        .fillna(0)
+        .map(lambda value: f"${value:,.0f}")
+    )
+    overview_display["cost_per_active_seat"] = (
+        overview_display["cost_per_active_seat"]
+        .fillna(0)
+        .map(lambda value: f"${value:,.0f}")
+    )
+    st.dataframe(
+        overview_display[
+            [
+                "org_name",
+                "app_name",
+                "category",
+                "assigned_seats",
+                "active_seats",
+                "inactive_seats",
+                "utilization_rate",
+                "total_spend_12m",
+                "cost_per_active_seat",
+                "over_licensed_flag",
+            ]
+        ],
+        use_container_width=True,
+    )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,11 @@
+[project]
+name = "ramp-analytics-frontend"
+version = "0.1.0"
+description = "Streamlit frontend for Ramp Seat Intelligence"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "duckdb==1.4.4",
+  "numpy==2.4.2",
+  "pandas==2.2.3",
+  "streamlit==1.43.2",
+]
